@@ -5,6 +5,25 @@ from book_bot.items import maybe_getattr
 from book_bot.utils import http, os_files
 
 
+def check_login(fn):
+    def wrapper(cls, response):
+        if LoginSpider.auth_failed(response):
+            raise AuthenticationException()
+        return fn(cls, response)
+    return wrapper
+
+
+def interative_login(fn):
+    def wrapper(cls, retry):
+        def interative_wrapper(response):
+            try:
+                return check_login(fn)(cls, response)
+            except AuthenticationException as e:
+                return retry(response)
+        return interative_wrapper
+    return wrapper
+
+
 def get_credentials(file=None, username=None):
     if file:
         with open(file, 'r') as h:
@@ -16,6 +35,11 @@ def get_credentials(file=None, username=None):
         header += ': '
         username, password = input(header), getpass()
     return username.strip(), password.strip()
+
+
+class AuthenticationException(Exception):
+    def __init__(self, message='User is not authenticated.', **kwargs):
+        super().__init__(message, **kwargs)
 
 
 class LoginSpider(scrapy.Spider):
@@ -30,12 +54,12 @@ class LoginSpider(scrapy.Spider):
     password_arg = 'id_senha'
 
     def start_requests(self):
-        yield http.web_open(callback=self.after_login)
+        login_handler = self.after_login(self.retry_login)
+        yield http.web_open(callback=login_handler)
 
+    @interative_login
     @http.log_request
     def after_login(self, response):
-        if LoginSpider.auth_failed(response):
-            return self.retry_login(response)
         self.logger.info('logged in')
 
     def retry_login(self, response):
@@ -51,8 +75,9 @@ class LoginSpider(scrapy.Spider):
         new_credentials = self._read_auth(default_dict=original_data)
 
         self._log_user(new_credentials, 'login attempt with user: %s')
+        login_handler = self.after_login(self.retry_login)
         yield http.web_open('/login.processa',
-                    callback=self.after_login,
+                    callback=login_handler,
                     formdata=new_credentials,
                     dont_filter=True,
                     impl=scrapy.FormRequest)
@@ -66,7 +91,7 @@ class LoginSpider(scrapy.Spider):
         pwd_key = LoginSpider.password_arg.encode()
         has_ids = user_key in body and pwd_key in body
         has_js_redirect = b'eadv4/login/index.jsp' in body
-        
+
         if 'redirect_reasons' in response.meta:
             redirect_statuses = response.meta['redirect_reasons']
             if redirect_statuses and redirect_statuses[-1] != 302:

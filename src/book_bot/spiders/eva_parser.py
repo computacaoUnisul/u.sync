@@ -5,7 +5,7 @@ import cgi
 import secrets
 import json
 
-from .eva_auth import LoginSpider
+from .eva_auth import LoginSpider, check_login
 from book_bot.items import SubjectLoader, BookLoader, maybe_getattr
 from book_bot.utils import http, os_files
 import scrapy
@@ -42,16 +42,12 @@ class SubjectSpider(scrapy.Spider):
     subjects = []
 
     def start_requests(self):
-        yield http.web_open(callback=self.check_login)
-
-    def check_login(self, response):
-        assert not LoginSpider.auth_failed(response), 'User is not authenticated.'
-
         yield http.web_open('/listaDisciplina.processa',
                     args=SubjectSpider.subject_args, 
                     callback=self.parse_subjects)
 
     @http.log_request
+    @check_login
     def parse_subjects(self, response):
         loader = SubjectLoader()
         _display_and_load(self, 'subject', loader.get_tree(response), loader)
@@ -80,7 +76,7 @@ class BookSpider(scrapy.Spider):
         self.subjects_content = os_files.load_sync_data(SubjectSpider.sync_file)
         request = self.sync_next_subject()
         if request is not None:
-            yield request
+            yield request 
 
     def sync_next_subject(self):
         self.logger.debug(self.subjects_content)
@@ -95,6 +91,7 @@ class BookSpider(scrapy.Spider):
                                 callback=self.parse_books)
 
     @http.log_request
+    @check_login
     def parse_books(self, response):
         assert 'subject' in response.meta, 'Main subject was not provided.'
         subject = response.meta['subject']
@@ -108,7 +105,7 @@ class BookSpider(scrapy.Spider):
             return request
 
     def closed(self, reason):
-       os_files.dump_sync_data(BookSpider.sync_file, self.books)
+        os_files.dump_sync_data(BookSpider.sync_file, self.books)
     
     def _get_book_args(self, subject_item):
         new_args = BookSpider.book_args

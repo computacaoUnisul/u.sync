@@ -2,6 +2,7 @@ import os
 
 import scrapy
 from .eva_parser import BookSpider
+from .eva_auth import check_login
 from book_bot.items import BookLoader, maybe_getattr
 from book_bot.utils import os_files, http 
 
@@ -14,6 +15,10 @@ class BookDownloaderSpider(scrapy.Spider):
     destination_directory = 'destination'
 
     def start_requests(self):
+        yield http.web_open(callback=self.synchronize)
+
+    @check_login
+    def synchronize(self, response):
         content = os_files.load_sync_data(BookSpider.sync_file)
         def maybe_call_hook(method, args):
             self.logger.debug('looking for hook: %s', method)
