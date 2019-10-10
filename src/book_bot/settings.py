@@ -14,7 +14,7 @@ BOT_NAME = 'book_bot'
 SPIDER_MODULES = ['book_bot.spiders']
 NEWSPIDER_MODULE = 'book_bot.spiders'
 
-LOG_LEVEL = 'ERROR'
+LOG_LEVEL = 'DEBUG'
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'book-bot (+http://www.yourdomain.com)'
@@ -52,11 +52,16 @@ DEFAULT_REQUEST_HEADERS = {
 #    'evaparse.middlewares.EvaparseSpiderMiddleware': 543,
 #}
 
+COOKIES_ENABLED=True
+COOKIES_PERSISTENCE=True
+
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
-#DOWNLOADER_MIDDLEWARES = {
-#    'evaparse.middlewares.EvaparseDownloaderMiddleware': 543,
-#}
+DOWNLOADER_MIDDLEWARES = {
+  #  'evaparse.middlewares.EvaparseDownloaderMiddleware': 543,
+  'scrapy.downloadermiddlewares.cookies.CookiesMiddleware': None,
+  'scrapy_cookies.downloadermiddlewares.cookies.CookiesMiddleware': 700,
+}
 
 # Enable or disable extensions
 # See https://docs.scrapy.org/en/latest/topics/extensions.html
@@ -66,9 +71,9 @@ DEFAULT_REQUEST_HEADERS = {
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'evaparse.pipelines.EvaparsePipeline': 300,
-#}
+# ITEM_PIPELINES = {
+#    'book_bot.pipelines.SubjectPipeline': 300,
+# }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html

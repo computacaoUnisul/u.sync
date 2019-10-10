@@ -10,10 +10,15 @@ from dataclasses import dataclass, field
 from scrapy.http import Response
 from scrapy.utils.url import urlparse
 from scrapy.loader.processors import MapCompose, TakeFirst
+from scrapy.selector.unified import Selector
 
 
 def fieldNormalizer(*args):
-    return MapCompose(str, *args, str.strip)
+    def parse_tree(argument):
+        if isinstance(argument, Selector):
+            return argument.get()
+        return argument
+    return MapCompose(parse_tree, str, *args, str.strip)
 
 
 def flattenOutput(cls, value):
@@ -70,12 +75,13 @@ class Subject(Item):
 
 class Book(Item):
     __keys__ = ['name', 'download_url', 'filename', 'subject']
-
+    
+    subject_in = lambda cls, s: s # passthrough
     qs_file_arg = 'arquivo'
 
     def __setitem__(self, key, value):
-        super(Item, self).__setitem__(key, value)
-        if key in 'download_url':
+        super().__setitem__(key, value)
+        if key == 'download_url' and self['download_url']:
             query_st = urlparse(self['download_url']).query
             parsed_qs = parse_qs(query_st)
         
@@ -91,6 +97,10 @@ class SubjectLoader:
 
     def get_tree(self, response: Response):
         return response.xpath("//div[@id='grad']/div[1]/div[1]/div[1]/div")
+
+    @staticmethod
+    def from_dict(data: dict):
+        return Subject(name=data['name'], class_id=data['class_id'])
 
     def __call__(self, index, subject_tree):
         s = Subject()
@@ -108,13 +118,18 @@ class BookLoader:
     def get_tree(self, response: Response):
         return response.xpath("//div[@id='insereEspaco']/div")
 
+    @staticmethod
+    def from_dict(data: dict):
+        subject = SubjectLoader.from_dict(data['subject'])
+        return Book(name=data['name'], 
+                    download_url=data['download_url'], 
+                    filename=data['filename'],
+                    subject=subject)
+
     def __call__(self, index, book_tree):
         b = Book(subject=self.subject)
-        b['name'] = book_tree.xpath('.//small/text()')
+        b['name'] = book_tree.xpath('.//small//text()')
         b['download_url'] = book_tree.xpath(".//a[@title='Download']/@href")
-        # if b['download_url'] is None:
-        #     print(b)
-        #     print(book_tree.getall())
         self.books.append(b)
         return b['name']
     
