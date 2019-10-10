@@ -36,7 +36,8 @@ $AUTH_SCRIPT && \
     chmod 640 ${COOKIEJAR} && \
     scrapy crawl subject_parser && \
     scrapy crawl book_parser && \
-    $DOWNLOADER_SCRIPT
+    $DOWNLOADER_SCRIPT 
 
+scrapy crawl logout_eva
 popd
 popd
