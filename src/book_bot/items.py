@@ -13,16 +13,16 @@ from scrapy.loader.processors import MapCompose, TakeFirst
 from scrapy.selector.unified import Selector
 
 
-def fieldNormalizer(*args):
+def field_normalizer(*args):
     def parse_tree(argument):
         if isinstance(argument, Selector):
             return argument.get()
         return argument
-    return MapCompose(parse_tree, str, *args, str.strip)
+    return MapCompose(parse_tree, first_when_list, str, *args, str.strip)
 
 
-def flattenOutput(cls, value):
-    if type(value) is list:
+def first_when_list(value):
+    if isinstance(value, list):
         return TakeFirst()(value)
     return value
 
@@ -39,8 +39,8 @@ def maybe_getattr(cls, name, default=None):
 
 class Item(dict):
     __keys__ =  []
-    __input_processor__ = fieldNormalizer()
-    __output_processor__ = flattenOutput
+    __input_processor__ = field_normalizer()
+    __output_processor__ = lambda cls, o: first_when_list(o)
 
     def __init__(self, **kwargs):
         super().__init__()
@@ -70,7 +70,7 @@ class Subject(Item):
     __keys__ = ['name', 'class_id']
 
     # custom processor for name
-    name_in = fieldNormalizer(parse_subject_name)
+    name_in = field_normalizer(parse_subject_name)
 
 
 class Book(Item):
@@ -132,4 +132,23 @@ class BookLoader:
         b['download_url'] = book_tree.xpath(".//a[@title='Download']/@href")
         self.books.append(b)
         return b['name']
+
+
+
+class MaxSubject(Subject):
+    __keys__ = Subject.__keys__ + ['url']
+
+
+class MaxSubjectLoader(SubjectLoader):
+    def get_tree(self, response):
+        night_subjects = response.xpath('//table[2]/tbody[1]/tr[last()]/td')
+        del night_subjects[0]
+        return night_subjects
+
+    def __call__(self, index, subject_tree):
+        s = MaxSubject()
+        s['url'] = subject_tree.xpath('.//a[1]/@href')
+        s['name'] = subject_tree.xpath('.//text()')
+        self.subjects.append(s)
+        return s['name']
     

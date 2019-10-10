@@ -13,6 +13,9 @@ def dump_sync_data(filename, data):
         file.write(json.dumps(data))
 
 
-def load_sync_data(filename):
-    with open(os.path.join('.sync', filename), 'rb') as file:
+def load_sync_data(filename, default=[]):
+    filepath = os.path.join('.sync', filename)
+    if not os.path.exists(filepath):
+        return default
+    with open(filepath, 'rb') as file:
         return json.load(file)

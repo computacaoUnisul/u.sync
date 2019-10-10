@@ -21,9 +21,9 @@ def download(filename, response):
         file.write(response.body)
 
 
-def web_open(url='', args=None, impl=scrapy.Request, **kwargs):
+def web_open(url='', args=None, impl=scrapy.Request, base_url=BASE_URL, **kwargs):
     stripped_url = url.lstrip('/')
-    url = f'{BASE_URL}{stripped_url}'
+    url = f'{base_url}{stripped_url}'
     kwargs.setdefault('dont_filter', True)
     if args is not None:
         query_st = '?' + urlencode(args).lstrip('?')

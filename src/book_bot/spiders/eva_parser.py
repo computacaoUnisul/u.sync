@@ -6,7 +6,7 @@ import secrets
 import json
 
 from .eva_auth import LoginSpider, check_login
-from book_bot.items import SubjectLoader, BookLoader, maybe_getattr
+from book_bot.items import SubjectLoader, BookLoader, MaxSubjectLoader, maybe_getattr
 from book_bot.utils import http, os_files
 import scrapy
 
@@ -39,7 +39,9 @@ class SubjectSpider(scrapy.Spider):
                         subMenu="",
                         ferramenta="")
 
-    subjects = []
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.subjects = os_files.load_sync_data(SubjectSpider.sync_file, default=[])
 
     def start_requests(self):
         yield http.web_open('/listaDisciplina.processa',
@@ -111,3 +113,18 @@ class BookSpider(scrapy.Spider):
         new_args = BookSpider.book_args
         new_args['turmaIdSessao'] = subject_item['class_id']
         return new_args
+
+
+class MaxPageSpider(SubjectSpider):
+    name = 'max_subject_parser'
+    allowed_domains = 'paginas.unisul.br'
+
+    def start_requests(self):
+        url = 'http://paginas.unisul.br/max.pereira/horario.htm'
+        yield http.web_open(base_url=url, callback=self.parse_schedule)
+        
+    def parse_schedule(self, response):
+        subject_loader = MaxSubjectLoader()
+        _display_and_load(self, 'subject', subject_loader.get_tree(response), subject_loader)
+        self.logger.debug(subject_loader) 
+        self.subjects.extend(subject_loader.subjects)
