@@ -44,7 +44,7 @@ class AuthenticationException(Exception):
 
 class LoginSpider(scrapy.Spider):
     name = 'eva_login'
-    allowed_domains = 'unisul.br'
+    allowed_domains = http.EVA_DOMAIN
 
     # Cli arguments
     authentication_file = 'auth_file'
@@ -52,6 +52,8 @@ class LoginSpider(scrapy.Spider):
     # Request information
     username_arg = 'id_login'
     password_arg = 'id_senha'
+
+    __auth_fake__ = False
 
     def start_requests(self):
         login_handler = self.after_login(self.retry_login)
@@ -84,6 +86,11 @@ class LoginSpider(scrapy.Spider):
 
     @staticmethod
     def auth_failed(response):
+        # fake authentication...bad?
+        if LoginSpider.__auth_fake__:
+            LoginSpider.__auth_fake__ = False
+            return False
+
         body = response.body
 
         # text is bytes-like object
@@ -97,6 +104,10 @@ class LoginSpider(scrapy.Spider):
             if redirect_statuses and redirect_statuses[-1] != 302:
                 return False
         return has_ids or has_js_redirect
+    
+    @staticmethod
+    def fake_auth():
+        LoginSpider.__auth_fake__ = True
 
     def _build_creds(self, username, password, default_username=None):
         if not username and default_username:
@@ -119,6 +130,7 @@ class LoginSpider(scrapy.Spider):
 
 class LogoutSpider(scrapy.Spider):
     name = 'logout_eva'
+    allowed_domains = http.EVA_DOMAIN
 
     def start_requests(self):
         yield http.web_open(callback=self.parse_home)
