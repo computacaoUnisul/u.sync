@@ -18,7 +18,7 @@ def field_normalizer(*args):
         if isinstance(argument, Selector):
             return argument.get()
         return argument
-    return MapCompose(parse_tree, first_when_list, str, *args, str.strip)
+    return MapCompose(first_when_list, parse_tree, str, *args, str.strip)
 
 
 def first_when_list(value):
@@ -82,13 +82,16 @@ class Book(Item):
     def __setitem__(self, key, value):
         super().__setitem__(key, value)
         if key == 'download_url' and self['download_url']:
-            query_st = urlparse(self['download_url']).query
-            parsed_qs = parse_qs(query_st)
-        
-            if Book.qs_file_arg in parsed_qs:
-                self['filename'] = parsed_qs[Book.qs_file_arg][0]
-            else:
-                self['filename'] = None 
+            self.set_filename()
+
+    def set_filename(self):
+        query_st = urlparse(self['download_url']).query
+        parsed_qs = parse_qs(query_st)
+    
+        if Book.qs_file_arg in parsed_qs:
+            self['filename'] = parsed_qs[Book.qs_file_arg][0]
+        else:
+            self['filename'] = None
 
 
 @dataclass
@@ -132,23 +135,4 @@ class BookLoader:
         b['download_url'] = book_tree.xpath(".//a[@title='Download']/@href")
         self.books.append(b)
         return b['name']
-
-
-
-class MaxSubject(Subject):
-    __keys__ = Subject.__keys__ + ['url']
-
-
-class MaxSubjectLoader(SubjectLoader):
-    def get_tree(self, response):
-        night_subjects = response.xpath('//table[2]/tbody[1]/tr[last()]/td')
-        del night_subjects[0]
-        return night_subjects
-
-    def __call__(self, index, subject_tree):
-        s = MaxSubject()
-        s['url'] = subject_tree.xpath('.//a[1]/@href')
-        s['name'] = subject_tree.xpath('.//text()')
-        self.subjects.append(s)
-        return s['name']
     

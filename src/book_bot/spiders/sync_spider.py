@@ -9,7 +9,7 @@ from book_bot.utils import os_files, http
 
 class BookDownloaderSpider(scrapy.Spider):
     name = 'books_downloader'
-    allowed_domains = 'unisul.br'
+    allowed_domains = http.EVA_DOMAIN
 
     # Cli arguments
     destination_directory = 'destination'
@@ -19,7 +19,7 @@ class BookDownloaderSpider(scrapy.Spider):
 
     @check_login
     def synchronize(self, response):
-        content = os_files.load_sync_data(BookSpider.sync_file)
+        content = self.load_books()
         def maybe_call_hook(method, args):
             self.logger.debug('looking for hook: %s', method)
             hook = maybe_getattr(self, method)
@@ -27,7 +27,7 @@ class BookDownloaderSpider(scrapy.Spider):
                 hook(args)
 
         for item in content:
-            book_item = BookLoader.from_dict(item)
+            book_item = self.dict_to_book(item)
             self.logger.debug('analyzing book: %s', book_item)
             result = self._analyze_candidate(book_item) 
 
@@ -58,6 +58,17 @@ class BookDownloaderSpider(scrapy.Spider):
         http.download(file_path, response)
         self.logger.info('book downloaded: %s', book['name'])
 
+    def dict_to_book(self, data: dict):
+        return BookLoader.from_dict(data)
+
+    def build_download_request(self, book):
+        return http.web_open(book['download_url'], 
+                        cb_kwargs={'book': book},
+                        callback=self.handle_download)
+
+    def load_books(self):
+        return os_files.load_sync_data(BookSpider.sync_file)
+
     def _analyze_candidate(self, book_item):
         assert 'download_url' in book_item, 'Book has missing download url'
 
@@ -71,9 +82,7 @@ class BookDownloaderSpider(scrapy.Spider):
         elif os.path.exists(self._get_book_path(book_item, book_item['filename'])):
             return None
     
-        return http.web_open(book_item['download_url'], 
-                        cb_kwargs={'book': book_item},
-                        callback=self.handle_download)
+        return self.build_download_request(book_item)
 
     def _get_book_path(self, book_item, filename=''):
         return os.path.join(self._destination(), 

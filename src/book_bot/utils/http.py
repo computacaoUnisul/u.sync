@@ -5,6 +5,7 @@ import scrapy
 
 
 BASE_URL = 'https://www.uaberta.unisul.br/eadv4/'
+EVA_DOMAIN = 'uaberta.unisul.br'
     
 
 def save_response(filename):
@@ -22,9 +23,11 @@ def download(filename, response):
 
 
 def web_open(url='', args=None, impl=scrapy.Request, base_url=BASE_URL, **kwargs):
+    kwargs.setdefault('dont_filter', True)
+
     stripped_url = url.lstrip('/')
     url = f'{base_url}{stripped_url}'
-    kwargs.setdefault('dont_filter', True)
+        
     if args is not None:
         query_st = '?' + urlencode(args).lstrip('?')
         url = urljoin(url, query_st)

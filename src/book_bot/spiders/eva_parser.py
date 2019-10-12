@@ -1,12 +1,5 @@
-from getpass import getpass
-from urllib.parse import urlencode, urljoin
-import os
-import cgi
-import secrets
-import json
-
 from .eva_auth import LoginSpider, check_login
-from book_bot.items import SubjectLoader, BookLoader, MaxSubjectLoader, maybe_getattr
+from book_bot.items import SubjectLoader, BookLoader, maybe_getattr
 from book_bot.utils import http, os_files
 import scrapy
 
@@ -19,15 +12,18 @@ def _display_and_load(spider, name, tree, callback):
     spider.logger.info(f'number of {name}(s) found: %d', tree_length)
     
     listing = f'listing of {name}(s):\n'
-    for index, item_tree in enumerate(tree):
+    index = 0
+    for item_tree in tree:
         text = callback(index, item_tree)
-        listing += f'{index + 1} - {text}\n'
+        if text:
+            index += 1
+            listing += f'{index} - {text}\n'
     spider.logger.info(listing)
 
 
 class SubjectSpider(scrapy.Spider):
     name = 'subject_parser'
-    allowed_domains = 'unisul.br'
+    allowed_domains = http.EVA_DOMAIN
 
     sync_file = 'subjects.json'
 
@@ -41,7 +37,7 @@ class SubjectSpider(scrapy.Spider):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.subjects = os_files.load_sync_data(SubjectSpider.sync_file, default=[])
+        self.subjects = os_files.load_sync_data(SubjectSpider.sync_file)
 
     def start_requests(self):
         yield http.web_open('/listaDisciplina.processa',
@@ -62,7 +58,7 @@ class SubjectSpider(scrapy.Spider):
 
 class BookSpider(scrapy.Spider):
     name = 'book_parser'
-    allowed_domains = 'unisul.br'
+    allowed_domains = http.EVA_DOMAIN
 
     sync_file = 'books.json'
 
@@ -74,8 +70,11 @@ class BookSpider(scrapy.Spider):
     books = []
     subjects_content = []
 
-    def start_requests(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.subjects_content = os_files.load_sync_data(SubjectSpider.sync_file)
+
+    def start_requests(self):
         request = self.sync_next_subject()
         if request is not None:
             yield request 
@@ -98,13 +97,14 @@ class BookSpider(scrapy.Spider):
         assert 'subject' in response.meta, 'Main subject was not provided.'
         subject = response.meta['subject']
         self.logger.debug('subject: %s', subject)
-        loader = BookLoader(subject=subject)
+        loader = self.get_loader(subject)
         _display_and_load(self, 'book', loader.get_tree(response), loader)
         self.logger.debug(loader.books)
         self.books.extend(loader.books)
-        request = self.sync_next_subject()
-        if request is not None:
-            return request
+        return self.start_requests()
+
+    def get_loader(self, subject):
+        return BookLoader(subject=subject)
 
     def closed(self, reason):
         os_files.dump_sync_data(BookSpider.sync_file, self.books)
@@ -113,18 +113,3 @@ class BookSpider(scrapy.Spider):
         new_args = BookSpider.book_args
         new_args['turmaIdSessao'] = subject_item['class_id']
         return new_args
-
-
-class MaxPageSpider(SubjectSpider):
-    name = 'max_subject_parser'
-    allowed_domains = 'paginas.unisul.br'
-
-    def start_requests(self):
-        url = 'http://paginas.unisul.br/max.pereira/horario.htm'
-        yield http.web_open(base_url=url, callback=self.parse_schedule)
-        
-    def parse_schedule(self, response):
-        subject_loader = MaxSubjectLoader()
-        _display_and_load(self, 'subject', subject_loader.get_tree(response), subject_loader)
-        self.logger.debug(subject_loader) 
-        self.subjects.extend(subject_loader.subjects)

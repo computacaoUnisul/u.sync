@@ -10,7 +10,7 @@ def maybe_create_dir(directory):
 def dump_sync_data(filename, data):
     maybe_create_dir('.sync')
     with open(os.path.join('.sync', filename), 'w') as file:
-        file.write(json.dumps(data))
+        file.write(json.dumps(data, indent=2))
 
 
 def load_sync_data(filename, default=[]):
