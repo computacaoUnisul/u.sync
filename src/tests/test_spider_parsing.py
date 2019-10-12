@@ -1,25 +1,10 @@
 from unittest.mock import MagicMock, Mock
 
 import pytest
-from book_bot.spiders import eva_spider
+from book_bot.spiders import eva_parser
 from book_bot.items import Subject, Book 
-from .util import fake_response, fake_response_from_file
-
-
-def test_request_subject_by_id():
-    spider_helper = eva_spider.EvaSpider()
-    
-    index = 0
-    def assert_requests(*args, **kwargs):
-        nonlocal index
-        req_args = kwargs.get('args')
-        fake_subject = dict(class_id=str(index))
-        default_args = spider_helper._get_subject_args(fake_subject)
-        index += 1
-        assert req_args == default_args
-
-    fake_loader = fake_subject_loader(2)
-    mock_parser(fake_loader, side_effect=assert_requests)
+from book_bot.utils import http, os_files
+from .util import fake_response, fake_response_from_file, mock_http_open
 
 
 def test_book_parses_filename_from_url():
@@ -29,11 +14,12 @@ def test_book_parses_filename_from_url():
 
 
 def test_request_all_subjects():
-    expected_calls = 2
-    fake_loader = fake_subject_loader(expected_calls)
+    expected_subjects = 2
+    fake_loader = fake_subject_loader(expected_subjects)
 
     spider = mock_parser(fake_loader)
-    assert spider._open_req.call_count == expected_calls
+   
+    assert len(spider.subjects) == expected_subjects
 
 
 def test_raises_exception_when_empty():
@@ -41,43 +27,44 @@ def test_raises_exception_when_empty():
     response.xpath = MagicMock(return_value=[])
     
     with pytest.raises(Exception):
-        spider = eva_spider.EvaSpider()
-        iterate(spider.parse_subjects(response))
+        spider = eva_parser.SubjectSpider()
+        spider.parse_subjects(response)
 
 
 def test_subject_parsing_from_file():
-    spider = eva_spider.EvaSpider()
-    
+    spider = mock_subject_spider()
     response = fake_response_from_file('assets/subjects.html')
-    iterator = spider.parse_subjects(response)
-
-    for index, req in enumerate(iterator):
-        subject_item = req.meta['subject']
+    
+    for index, subject_item in enumerate(spider.subjects):
         assert subject_item['class_id'] == str(index) 
         assert subject_item['name'] == f'subject{index}'
 
 
 def fake_subject_loader(size):
-    def loader_mock(name, tree, loader):
+    def loader_mock(spider, name, tree, loader):
         for i in range(size):
             s = Subject(name=name, class_id=str(i))
             loader.subjects.append(s)
     return loader_mock
 
 
-def mock_parser(loader_fn, **req_mock_kwargs):
-    spider = eva_spider.EvaSpider()
+def mock_parser(loader_fn):
+    spider = mock_subject_spider([])
     
-    spider._display_list = MagicMock(side_effect=loader_fn)
-    spider._open_req = MagicMock(**req_mock_kwargs)
+    old_loader = eva_parser._display_and_load 
+    eva_parser._display_and_load = MagicMock(side_effect=loader_fn)
 
     response = fake_response()
     response.xpath = MagicMock()
 
-    iterate(spider.parse_subjects(response))
+    spider.parse_subjects(response)
+    eva_parser._display_and_load = old_loader
     return spider
 
 
-def iterate(iterator):
-    for _ in iterator:
-        pass
+def mock_subject_spider(initial_subjects=[]):
+    old_load_sync = os_files.load_sync_data
+    os_files.load_sync_data = MagicMock(side_effect=lambda *all: initial_subjects)
+    spider = eva_parser.SubjectSpider()
+    os_files.load_sync_data = old_load_sync
+    return spider

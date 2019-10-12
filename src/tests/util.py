@@ -1,5 +1,7 @@
 import os
+from unittest.mock import MagicMock
 
+from book_bot.utils import http
 from scrapy.http import TextResponse, Request
 
 
@@ -30,3 +32,9 @@ def fake_request(url=None):
     if not url:
         url = 'http://www.example.com'
     return Request(url=url)
+
+
+def mock_http_open():
+    mocked_http = MagicMock(side_effect=http.web_open)
+    http.web_open = mocked_http
+    return mocked_http

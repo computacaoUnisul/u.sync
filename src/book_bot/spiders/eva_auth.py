@@ -70,7 +70,6 @@ class LoginSpider(scrapy.Spider):
         original_data = response.meta.get('creds', None)
         if original_data:
             del response.meta['creds']
-            del response.request.meta['creds']
             self._log_user(original_data, 'last login with username: %s')
         
         self.logger.info('retrying login...')
@@ -79,10 +78,11 @@ class LoginSpider(scrapy.Spider):
         self._log_user(new_credentials, 'login attempt with user: %s')
         login_handler = self.after_login(self.retry_login)
         yield http.web_open('/login.processa',
-                    callback=login_handler,
-                    formdata=new_credentials,
-                    dont_filter=True,
-                    impl=scrapy.FormRequest)
+                            callback=login_handler,
+                            formdata=new_credentials,
+                            meta={'creds': new_credentials},
+                            dont_filter=True,
+                            impl=scrapy.FormRequest)
 
     @staticmethod
     def auth_failed(response):
