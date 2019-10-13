@@ -45,4 +45,50 @@ Um shell script foi criado com a finalidade de juntar a execução de cada Spide
 O script anteriormente citado nos limita a executar uma operação por vez, ou o EVA ou o Max, não os dois. Se este é o seu objetivo, existe um outro script que sincroniza os dois, também está na raiz com o nome de ```sync_all.sh```. O script apenas executa o EVA e depois chama o Max Spider, no final é apenas um `helper`.
 Os parâmetros são os mesmos do script `sync.sh`.
 
+## Testar no Windows
+Como o projeto não tem suporte oficial a Windows, me refiro aqui a "Testar". Isso não significa que não funciona no Windows, aliás o código é escrito em python então basta ter o interpretador de python e estará tudo certo. Sendo assim é preciso que siga o manual de instalação. 
+
+Após ter concluido os passos anteriores, garanta que os binários `python3` e `scrapy` sejam reconhecidos pelo cmd. Então entre no diretório `src/book_bot/` e siga os passos a seguir:
+- faz login ao sistema EVA, e também irá criar um arquivo com os cookies em `src/.scrapy/cookies`.
+```bash
+scrapy crawl eva_login -a auth_file=/caminho/meu-arquivo-de-autenticação
+```
+
+- extrai as matérias e as salva por padrão em `src/book_bot/.sync/subjects.json`
+```bash
+scrapy crawl subject_parser
+```
+
+- extrai os materiais de cada matéria e os salva por padrão em `src/book_bot/.sync/books.json`
+```bash
+scrapy crawl book_parser
+```
+
+- sincroniza os materiais com o diretório local, que por padrão é `src/book_bot/downloads/`
+```bash
+scrapy crawl books_downloader -a destination=/caminho/customizado/meu-diretorio
+```
+
+- faz logout no EVA e assim irá invalidar o cookie, então você pode remove-lo também
+```bash
+scrapy crawl logout_eva
+```
+
+### Max Spider
+O Spider do Max estende os spiders do sistema EVA com algumas características diferenciadas. Para sincronizar com os materiais do Max a ideia é a mesma, basicamente:
+- login e logout são eliminados
+- os Spiders de extração são diferentes
+- o Spider de sincronização é o mesmo 
+
+Então para completar serão estes comandos para a sincronização:
+```bash
+scrapy crawl max_subject_parser
+```
+```bash
+scrapy crawl max_book_parser
+```
+```bash
+scrapy crawl books_downloader
+```
+
 ## Continua...
