@@ -13,8 +13,7 @@ BOT_NAME = 'book_bot'
 
 SPIDER_MODULES = ['book_bot.spiders']
 NEWSPIDER_MODULE = 'book_bot.spiders'
-
-LOG_LEVEL = 'DEBUG'
+LOG_LEVEL = 'ERROR'
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'book-bot (+http://www.yourdomain.com)'
@@ -23,7 +22,7 @@ LOG_LEVEL = 'DEBUG'
 ROBOTSTXT_OBEY = True
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
-#CONCURRENT_REQUESTS = 32
+CONCURRENT_REQUESTS = 32
 
 # Configure a delay for requests for the same website (default: 0)
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
@@ -52,7 +51,6 @@ DEFAULT_REQUEST_HEADERS = {
 #    'evaparse.middlewares.EvaparseSpiderMiddleware': 543,
 #}
 
-COOKIES_ENABLED=True
 COOKIES_PERSISTENCE=True
 
 # Enable or disable downloader middlewares
