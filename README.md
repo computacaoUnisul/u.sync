@@ -9,11 +9,11 @@ Antes de iniciar, certifique-se de ter lido os requisitos.
 ### Baixe o repo 
 Faça o download do repositório com:
 ```bash
-git clone {repo.url}
+git clone https://github.com/computacaoUnisul/u.sync.git
 ```
 
 ### Instale as dependências
-O projeto usa o scrapy para automatizar os processos HTTP cliente/servidor, além dos ferramentas para extrair dados de texto HTML. Também é utilizado um projeto chamado scrapy-cookies, que lida com persistência dos cookies de autenticação em memória. Para instalar, entre no diretório raiz do projeto e execute do terminal:
+O projeto usa o [scrapy](https://github.com/scrapy/scrapy) para automatizar os processos HTTP cliente/servidor, além dos ferramentas para extrair dados de texto HTML. Também é utilizado um projeto chamado [scrapy-cookies](https://github.com/scrapedia/scrapy-cookies), que lida com persistência dos cookies de autenticação em memória. Para instalar, entre no diretório raiz do projeto e execute do terminal:
 
 OBS: utilize o binário do seu sistema, no meu caso é o ```pip```, mas se você ter o pip instalado para python versão 2.7, provavelmente o certo para você será ```pip3```.
 ```bash
