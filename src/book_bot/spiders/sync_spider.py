@@ -14,6 +14,11 @@ class BookDownloaderSpider(scrapy.Spider):
     # Cli arguments
     destination_directory = 'destination'
 
+    custom_settings = {
+        'CONCURRENT_REQUESTS': 100,
+        'SCHEDULER_PRIORITY_QUEUE': 'scrapy.pqueues.DownloaderAwarePriorityQueue'
+    }
+
     def start_requests(self):
         yield http.web_open(callback=self.synchronize)
 
