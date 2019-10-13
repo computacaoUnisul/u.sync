@@ -1,8 +1,9 @@
 import os
-from unittest.mock import MagicMock
 
 from book_bot.utils import http
 from scrapy.http import TextResponse, Request
+from book_bot.utils import os_files
+from unittest.mock import MagicMock
 
 
 def fake_response(url=None, request=None, **kwargs):
@@ -34,7 +35,17 @@ def fake_request(url=None):
     return Request(url=url)
 
 
-def mock_http_open():
-    mocked_http = MagicMock(side_effect=http.web_open)
-    http.web_open = mocked_http
-    return mocked_http
+def file_with(filename, data):
+    mode = 'w'
+    if type(data) is bytes:
+        mode += 'b'
+    with open(filename, mode) as writer:
+        writer.write(data)
+
+
+def spider_from_scratch(spider):
+    old_load_sync = os_files.load_sync_data
+    os_files.load_sync_data = MagicMock(return_value=[])
+    spider = spider()
+    os_files.load_sync_data = old_load_sync
+    return spider

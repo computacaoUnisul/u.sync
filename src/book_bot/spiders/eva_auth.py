@@ -24,9 +24,9 @@ def interative_login(fn):
     return wrapper
 
 
-def get_credentials(file=None, username=None):
-    if file:
-        with open(file, 'r') as h:
+def get_credentials(io_reader=None, username=None):
+    if io_reader:
+        with io_reader as h:
             username, password = h.readlines()
     else:
         header = 'Username'
@@ -56,8 +56,7 @@ class LoginSpider(scrapy.Spider):
     __auth_fake__ = False
 
     def start_requests(self):
-        login_handler = self.after_login(self.retry_login)
-        yield http.web_open(callback=login_handler)
+        yield http.web_open(callback=self.get_login_handler())
 
     @interative_login
     @http.log_request
@@ -76,13 +75,15 @@ class LoginSpider(scrapy.Spider):
         new_credentials = self._read_auth(default_dict=original_data)
 
         self._log_user(new_credentials, 'login attempt with user: %s')
-        login_handler = self.after_login(self.retry_login)
         yield http.web_open('/login.processa',
-                            callback=login_handler,
+                            callback=self.get_login_handler(),
                             formdata=new_credentials,
                             meta={'creds': new_credentials},
                             dont_filter=True,
                             impl=scrapy.FormRequest)
+    
+    def get_login_handler(self):
+        return self.after_login(self.retry_login)
 
     @staticmethod
     def auth_failed(response):
@@ -117,10 +118,14 @@ class LoginSpider(scrapy.Spider):
 
     def _read_auth(self, default_dict=None):
         auth_file = maybe_getattr(self, LoginSpider.authentication_file)
+        if auth_file:
+            auth_file = open(auth_file, 'r')
+        
         username = None
         if default_dict is not None and LoginSpider.username_arg in default_dict:
             username = default_dict[LoginSpider.username_arg]
-        args = get_credentials(file=auth_file, username=username)
+        
+        args = get_credentials(io_reader=auth_file, username=username)
         return self._build_creds(*args, default_username=username)
 
     def _log_user(self, formdata, message):
