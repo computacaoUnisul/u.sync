@@ -13,7 +13,11 @@ BOT_NAME = 'book_bot'
 
 SPIDER_MODULES = ['book_bot.spiders']
 NEWSPIDER_MODULE = 'book_bot.spiders'
-LOG_LEVEL = 'ERROR'
+LOG_LEVEL = 'INFO'
+
+# Define URIs for extracting sync data.
+SUBJECT_EXPORTER_URI='subjects.json'
+BOOK_EXPORTER_URI='books.json'
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'book-bot (+http://www.yourdomain.com)'
@@ -29,8 +33,8 @@ CONCURRENT_REQUESTS = 32
 # See also autothrottle settings and docs
 #DOWNLOAD_DELAY = 3
 # The download delay setting will honor only one of:
-#CONCURRENT_REQUESTS_PER_DOMAIN = 16
-#CONCURRENT_REQUESTS_PER_IP = 16
+CONCURRENT_REQUESTS_PER_DOMAIN = 32
+# CONCURRENT_REQUESTS_PER_IP = 16
 
 # Disable cookies (enabled by default)
 #COOKIES_ENABLED = False
@@ -70,7 +74,7 @@ DOWNLOADER_MIDDLEWARES = {
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 # ITEM_PIPELINES = {
-#    'book_bot.pipelines.SubjectPipeline': 300,
+#    'book_bot.pipelines.SyncPipeline': 300,
 # }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
