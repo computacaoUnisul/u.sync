@@ -4,21 +4,34 @@
 #
 # See documentation in:
 # https://docs.scrapy.org/en/latest/topics/items.html
-from urllib.parse import parse_qs
-from dataclasses import dataclass, field
+import os
+from urllib.parse import parse_qs, unquote
 
-from scrapy.http import Response
+import scrapy
+from book_bot.utils import http
 from scrapy.utils.url import urlparse
 from scrapy.loader.processors import MapCompose, TakeFirst
 from scrapy.selector.unified import Selector
+from scrapy.item import Item
+from scrapy.loader import ItemLoader
 
 
-def field_normalizer(*args):
-    def parse_tree(argument):
-        if isinstance(argument, Selector):
-            return argument.get()
-        return argument
-    return MapCompose(first_when_list, parse_tree, str, *args, str.strip)
+def default_field(*args):
+    input_proc = MapCompose(first_when_list, parse_tree, str, *args, str.strip, remove_bad_chars)
+    return scrapy.Field(
+        input_processor=input_proc,
+        output_processor=TakeFirst()
+    )
+
+
+def remove_bad_chars(value):
+    return ' '.join(value.replace("\r\n", '').split())
+
+
+def parse_tree(value):
+    if isinstance(value, Selector):
+        return value.get()
+    return value
 
 
 def first_when_list(value):
@@ -37,102 +50,51 @@ def maybe_getattr(cls, name, default=None):
     return default
 
 
-class Item(dict):
-    __keys__ =  []
-    __input_processor__ = field_normalizer()
-    __output_processor__ = lambda cls, o: first_when_list(o)
+class NamedItem(Item):
+    name = default_field()
 
-    def __init__(self, **kwargs):
-        super().__init__()
-        for key, value in kwargs.items():
-            self.__setitem__(key, value)
-
-    def _get_processor(self, suffix, key, default):
-        processor = maybe_getattr(self, f'{key}{suffix}')
-        if processor is None:
-            processor = default
-        return processor
-
-    def __setitem__(self, key, value):
-        if key in self.__keys__:
-            processor = self._get_processor('_in', key, self.__input_processor__)
-            super().__setitem__(key, processor(value))
-        else:
-            raise KeyError(f'Invalid key {key}.')
-    
-    def __getitem__(self, key):
-        value = super().__getitem__(key)
-        processor = self._get_processor('_out', key, self.__output_processor__)
-        return processor(value)
+    def __str__(self):
+        return self['name']
 
 
-class Subject(Item):
-    __keys__ = ['name', 'class_id']
-
-    # custom processor for name
-    name_in = field_normalizer(parse_subject_name)
+class Subject(NamedItem):
+    name = default_field(parse_subject_name)
+    class_id = default_field()
 
 
-class Book(Item):
-    __keys__ = ['name', 'download_url', 'filename', 'subject']
-    
-    subject_in = lambda cls, s: s # passthrough
+class Book(NamedItem):
+    download_url = default_field()
+    filename = default_field(unquote)
+    subject = scrapy.Field()
+
     qs_file_arg = 'arquivo'
 
     def __setitem__(self, key, value):
         super().__setitem__(key, value)
-        if key == 'download_url' and self['download_url']:
-            self.set_filename()
+        if key == 'download_url' and self['download_url'] and not 'filename' in self:
+            self.parse_filename()
 
-    def set_filename(self):
+    def parse_filename(self):
         query_st = urlparse(self['download_url']).query
         parsed_qs = parse_qs(query_st)
     
         if Book.qs_file_arg in parsed_qs:
-            self['filename'] = parsed_qs[Book.qs_file_arg][0]
-        else:
-            self['filename'] = None
+            self.set_filename(parsed_qs[Book.qs_file_arg][0])
+    
+    def set_filename(self, filename):
+        """Sets the filename processing input/output manually"""
+        field = self.fields['filename']
+        out_proc, in_proc = field['output_processor'], field['input_processor']
+        self['filename'] = out_proc(in_proc(filename))
 
 
-@dataclass
-class SubjectLoader:
-    subjects: list = field(default_factory=list)
-
-    def get_tree(self, response: Response):
-        return response.xpath("//div[@id='grad']/div[1]/div[1]/div[1]/div")
-
-    @staticmethod
-    def from_dict(data: dict):
-        return Subject(name=data['name'], class_id=data['class_id'])
-
-    def __call__(self, index, subject_tree):
-        s = Subject()
-        s['class_id'] = subject_tree.xpath('.//a/@data-turma_id')
-        s['name'] = subject_tree.xpath('.//p/text()')
-        self.subjects.append(s)
-        return s['name']
+class MaxSubject(NamedItem):
+    url = default_field()
 
 
-@dataclass
-class BookLoader:
-    subject: Subject
-    books: list = field(default_factory=list)
+class MaxBook(Book):
+    def parse_filename(self):
+        self.set_filename(os.path.basename(self['download_url']))
+        
 
-    def get_tree(self, response: Response):
-        return response.xpath("//div[@id='insereEspaco']/div")
-
-    @staticmethod
-    def from_dict(data: dict):
-        subject = SubjectLoader.from_dict(data['subject'])
-        return Book(name=data['name'], 
-                    download_url=data['download_url'], 
-                    filename=data['filename'],
-                    subject=subject)
-
-    def __call__(self, index, book_tree):
-        b = Book(subject=self.subject)
-        b['name'] = book_tree.xpath('.//small//text()')
-        b['download_url'] = book_tree.xpath(".//a[@title='Download']/@href")
-        self.books.append(b)
-        return b['name']
     
