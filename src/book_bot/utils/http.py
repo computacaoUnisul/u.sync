@@ -4,8 +4,11 @@ from urllib.parse import urlencode, urljoin
 import scrapy
 
 
-BASE_URL = 'https://www.uaberta.unisul.br/eadv4/'
+EVA_BASE_URL = 'https://www.uaberta.unisul.br/eadv4/'
 EVA_DOMAIN = 'uaberta.unisul.br'
+
+MAX_BASE_URL = 'http://paginas.unisul.br/max.pereira/'
+UNISUL_PAGES_DOMAIN = 'paginas.unisul.br'
     
 
 def save_response(filename):
@@ -22,7 +25,7 @@ def download(filename, response):
         file.write(response.body)
 
 
-def web_open(url='', args=None, impl=scrapy.Request, base_url=BASE_URL, **kwargs):
+def web_open(url='', args=None, impl=scrapy.Request, base_url=EVA_BASE_URL, **kwargs):
     kwargs.setdefault('dont_filter', True)
 
     stripped_url = url.lstrip('/')
