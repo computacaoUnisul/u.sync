@@ -15,7 +15,7 @@ show_usage() {
     print_help_line '-m' "Run max spider, don't need authentication"
     print_help_line '-c' 'Removes old synchronize run'
     print_help_line '-x' 'Specifies the file with username/password'
-    print_help_line '-d' 'Specifies the directory to sync [default: src/book_bot/downloads]'
+    print_help_line '-d' 'Specifies the directory to sync [default: src/.scrapy/downloads]'
     exit 128
 }
 
@@ -55,7 +55,7 @@ else
 fi
 
 if [ -n "$DOWNLOAD_DESTINATION" ]; then
-    DOWNLOADER_SCRIPT+=" -a destination=${DOWNLOAD_DESTINATION}"
+    DOWNLOADER_SCRIPT+=" -s FILES_STORE=${DOWNLOAD_DESTINATION}"
 fi
 
 pushd book_bot/
