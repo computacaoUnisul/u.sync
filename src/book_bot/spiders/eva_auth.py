@@ -1,4 +1,4 @@
-import getpass
+from getpass import getpass
 
 import scrapy
 from book_bot.items import maybe_getattr
