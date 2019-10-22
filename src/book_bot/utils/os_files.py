@@ -11,12 +11,13 @@ def maybe_create_dir(directory):
         os.makedirs(directory)
 
 
-def open_sync_file(filename, mode):
+def open_sync_file(filename, mode, make_dir=True):
+    if make_dir:
+        maybe_create_dir('.sync')
     return open(os.path.join('.sync', filename), mode) 
 
 
 def dump_sync_data(filename, data):
-    maybe_create_dir('.sync')
     with open_sync_file(filename, 'w') as file:
         file.write(json.dumps(data, indent=2))
 
