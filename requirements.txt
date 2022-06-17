@@ -21,7 +21,7 @@ pymongo==3.9.0
 pyOpenSSL==19.0.0
 queuelib==1.5.0
 redis==3.3.10
-Scrapy==1.7.3
+Scrapy==2.6.1
 Scrapy-Cookies==0.3
 service-identity==18.1.0
 six==1.12.0
